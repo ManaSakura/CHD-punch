@@ -5,7 +5,7 @@ import yagmail
 from selenium import  webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-
+import ddddocr
 '''
 需要更改的地方：
 1. 38 行edge引擎绝对路径
@@ -16,13 +16,13 @@ from selenium.webdriver.common.by import By
 mail_user = 'XingyouTang109@163.com'    # 发送打卡提示的163邮箱
 mail_code = 'VUPGIYDRFPUKIBEK'   # SMTP第三方app授权码
 
-username_lst = ['2021226069', '2021126118', '2021220005']     # 学号列表
-password_lst = ['txy199906301152', '19980820hgjj', 'lxs140723']    # 密码列表
-receiver_mail_lst = ['1804151045@qq.com', '1105323812@qq.com', '1223015240@qq.com'] # 接收打卡提示的邮箱列表
+username_lst = ['2021226069', '2021229005', '2021226025', '2021126118']     # 学号列表
+password_lst = ['txy147258369', 'lxsxjy123', 'wu@wen@hui@111..', 'CHD001']    # 密码列表
+receiver_mail_lst = ['1804151045@qq.com', '1223015240@qq.com', '1041595011@qq.com', '1105323812@qq.com'] # 接收打卡提示的邮箱列表
 
-# username_lst = ['2021226069']     # 学号列表
-# password_lst = ['txy199906301152']    # 密码列表
-# receiver_mail_lst = ['1804151045@qq.com'] # 接收打卡提示的邮箱列表
+#username_lst = ['2021226069']     # 学号列表
+#password_lst = ['txy147258369']    # 密码列表
+#receiver_mail_lst = ['1804151045@qq.com'] # 接收打卡提示的邮箱列表
 
 
 def person_submit(username, password):
@@ -33,7 +33,7 @@ def person_submit(username, password):
     :return:
     '''
     # 1 信网处登录学号和密码
-    # option = webdriver.EdgeOptions()
+    option = webdriver.EdgeOptions()
     # option.add_argument('headless')
     service = Service(r'C:\Users\tang xingyou\AppData\Local\Programs\Python\Python37\msedgedriver.exe')
     driver = webdriver.Edge(service=service)
@@ -45,12 +45,22 @@ def person_submit(username, password):
     username_input = driver.find_element(By.ID, 'username')
     password_input = driver.find_element(By.ID, 'password')
     login_btn = driver.find_element(By.ID, 'login_submit')
+    # 输入学号
     username_input.send_keys(username)
     time.sleep(2)
+    # 输入密码
+    password_input.click()
+    time.sleep(1)
     password_input.send_keys(password)
-    time.sleep(2)
+    time.sleep(10)
+
+    # 判断是否存在验证码
+    # verification = driver.find_element(By.ID, 'captchaImg')
+    # verification_src = verification.value_of_css_property('src')
+    # print(verification_src)
+
     login_btn.click()
-    time.sleep(2)
+    time.sleep(5)
     # 2 登录成功后更新地址
     address_update_before_text = '点击获取详细地址'
     address_div = driver.find_element(By.ID, 'xxdz41')
@@ -64,7 +74,7 @@ def person_submit(username, password):
         # 点击更新地址
         address_div.click()
         print('地址更新中......')
-        time.sleep(10)
+        time.sleep(20)
         update_address_div = driver.find_element(By.ID, 'xxdz41')
         update_address_div_display = update_address_div.value_of_css_property('display')
         # print('定位更新后', update_address_div_display)
@@ -100,6 +110,16 @@ def person_submit(username, password):
         time.sleep(3)
         driver.close()
         return False
+
+def verify_code(img_path):
+    '''验证码验证'''
+
+    ocr = ddddocr.DdddOcr()
+    with open(img_path) as f:
+        img_bytes = f.read()
+        ocr_result = ocr.classification(img_bytes)
+        return ocr_result
+
 # 利用yagmail发送邮件
 def sendmail(receiver_mail, contents):
     '''
@@ -128,12 +148,26 @@ def person_punch(username, password, receiver_mail):
             print('{}打卡成功'.format(username))
             print('正在发送{}打卡邮件'.format(username))
             sendmail(receiver_mail, contents = '今日健康打卡成功')
-        else:
-            print('正在发送{}打卡邮件'.format(username))
-            sendmail(receiver_mail, contents = '今日健康打卡失败')
     except:
-        print('正在发送{}打卡邮件'.format(username))
-        sendmail(receiver_mail, contents='出现错误，打卡失败')
+        try:
+            isSubmit = person_submit(username=username, password=password)
+            if isSubmit:
+                print('{}打卡成功'.format(username))
+                print('正在发送{}打卡邮件'.format(username))
+                sendmail(receiver_mail, contents='今日健康打卡成功')
+        except:
+            try:
+                isSubmit = person_submit(username=username, password=password)
+                if isSubmit:
+                    print('{}打卡成功'.format(username))
+                    print('正在发送{}打卡邮件'.format(username))
+                    sendmail(receiver_mail, contents='今日健康打卡成功')
+                else:
+                    print('正在发送{}打卡邮件'.format(username))
+                    sendmail(receiver_mail, contents='今日健康打卡失败')
+            except:
+                print('正在发送{}打卡邮件'.format(username))
+                sendmail(receiver_mail, contents='出现错误，打卡失败')
 
 def main():
     # 多人打卡
@@ -144,3 +178,5 @@ def main():
     print('今日打卡人数:',len(username_lst))
 
 main()
+
+# person_submit(username_lst[0], password_lst[0])
